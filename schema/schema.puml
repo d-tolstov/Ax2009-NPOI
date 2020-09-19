@@ -1,0 +1,40 @@
+@startuml "Ax2009-NPOI"
+
+class NPOIWorkbook{
+}
+NPOIWorkbook o- NPOIWorksheet
+
+interface NPOI.SS.UserModel.IWorkbook{}
+NPOI.SS.UserModel.IWorkbook --o NPOIWorkbook
+
+class NPOIWorksheet{
+}
+NPOIWorksheet o- NPOIRow
+
+interface NPOI.SS.UserModel.ISheet{}
+NPOI.SS.UserModel.ISheet --o NPOIWorksheet
+
+class NPOIRowEnumerator{
+}
+NPOIWorksheet o-- NPOIRowEnumerator
+
+class NPOIRow{
+}
+NPOIRow o- NPOICell
+NPOIRow -o NPOIRowEnumerator
+
+interface NPOI.SS.UserModel.IRow{}
+NPOI.SS.UserModel.IRow --o NPOIRow
+
+class NPOICellEnumerator{
+}
+NPOIRow o-- NPOICellEnumerator
+
+class NPOICell{
+}
+NPOICell -o NPOICellEnumerator
+
+interface NPOI.SS.UserModel.ICell{}
+NPOICell o-- NPOI.SS.UserModel.ICell
+
+@enduml

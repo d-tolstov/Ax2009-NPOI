@@ -1,0 +1,975 @@
+﻿Exportfile for AOT version 1.0 or later
+Formatversion: 1
+
+***Element: CLS
+
+; Microsoft Dynamics AX Class: NPOIWorkbook выгружен
+; --------------------------------------------------------------------------------
+  CLSVERSION 1
+  
+  CLASS #NPOIWorkbook
+    PROPERTIES
+      Name                #NPOIWorkbook
+      Extends             #
+      RunOn               #Server
+    ENDPROPERTIES
+    
+    METHODS
+      Version: 3
+      SOURCE #classDeclaration
+        #/// <summary>
+        #/// This class is a wrapper around NPOI workbook
+        #/// </summary>
+        #/*
+        #    Класс запускается на сервере
+        #    чтобы не приходилось на клиентских машинах доустанавливать компоненты для NPOI
+        #*/
+        #class NPOIWorkbook
+        #{
+        #    NPOI.SS.UserModel.IWorkbook                         workbook;
+        #
+        #    Filename                                            filename;
+        #    System.IO.Stream                                    stream;
+        #
+        #    NPOIWorksheet                                       currentWorksheet;
+        #    Map                                                 worksheets;
+        #}
+      ENDSOURCE
+      SOURCE #close
+        #/// <summary>
+        #/// Closes current Excel document
+        #/// </summary>
+        #/// <param name="_save">
+        #/// if changes to this document should be saved
+        #/// </param>
+        #public void close(boolean _save = true)
+        #{
+        #    new InteropPermission(InteropKind::ClrInterop).assert();
+        #
+        #    if (workbook)
+        #    {
+        #        workbook.Close();
+        #    }
+        #
+        #    if (stream)
+        #        stream.Close();
+        #}
+      ENDSOURCE
+      SOURCE #FormulaEvaluateAll
+        #void FormulaEvaluateAll()
+        #{
+        #    NPOI.SS.UserModel.IFormulaEvaluator evaluator;
+        #    NPOI.SS.UserModel.ICreationHelper   helper;
+        #;
+        #    helper      = workbook.GetCreationHelper();
+        #    evaluator   = helper.CreateFormulaEvaluator();
+        #    evaluator.EvaluateAll();
+        #}
+      ENDSOURCE
+      SOURCE #getWorksheet
+        #/// <summary>
+        #/// Returns worksheet by it's id or name
+        #/// </summary>
+        #/// <param name="_idOrName">
+        #/// Id or name of worksheet
+        #/// </param>
+        #/// <param name="_exact">
+        #/// if true, it looking for worksheet which has id or name which was specified and returns null if worksheet was not found
+        #/// otherwise first selected worksheet returned
+        #/// </param>
+        #/// <returns>
+        #///  OXMLWorksheet_RU object which corresponds to specified parameters
+        #/// </returns>
+        #public NPOIWorksheet getWorksheet(anytype _idOrName = '', boolean _exact = false)
+        #{
+        #    NPOIWorksheet       worksheet;
+        #    MapEnumerator       enumerator;
+        #
+        #    int             id;
+        #    str             name;
+        #
+        #    switch (typeOf(_idOrName))
+        #    {
+        #        case Types::Integer:
+        #        case Types::Int64:
+        #            id = _idOrName;
+        #            break;
+        #        default:
+        #            name = _idOrName;
+        #    }
+        #
+        #    if (currentWorksheet                        &&
+        #       ((id   && currentWorksheet.id()   == id) ||
+        #        (name && currentWorksheet.name() == name)))
+        #    {
+        #        return currentWorksheet;
+        #    }
+        #
+        #    if (id && this.worksheets().exists(id))
+        #    {
+        #        worksheet = this.worksheets().lookup(id);
+        #    }
+        #    else if (name)
+        #    {
+        #        enumerator = this.worksheets().getEnumerator();
+        #
+        #        while (enumerator.moveNext())
+        #        {
+        #            worksheet = enumerator.currentValue();
+        #
+        #            if (worksheet.name() == name)
+        #            {
+        #                break;
+        #            }
+        #            else
+        #            {
+        #                worksheet = null;
+        #            }
+        #        }
+        #    }
+        #
+        #    if (!worksheet && !_exact)
+        #    {
+        #        if (currentWorksheet)
+        #        {
+        #            worksheet = currentWorksheet;
+        #        }
+        #        else
+        #        {
+        #            enumerator = this.worksheets().getEnumerator();
+        #            enumerator.moveNext();
+        #            worksheet = enumerator.currentValue();
+        #        }
+        #    }
+        #
+        #    currentWorksheet = worksheet;
+        #
+        #    return worksheet;
+        #}
+      ENDSOURCE
+      SOURCE #initWorksheets
+        #/// <summary>
+        #/// Initializes map which holds indexes of worksheets and OXMLWorksheet_RU object
+        #/// </summary>
+        #/// <remarks>
+        #/// worksheet Ids and names stored in sheets element of workbook(not worksheet)
+        #/// </remarks>
+        #private void initWorksheets()
+        #{
+        #    NPOIWorksheet                               worksheet;
+        #    int                                         i, sheetCount;
+        #
+        #    worksheets = new Map(Types::Integer, Types::Class);
+        #
+        #    new InteropPermission(InteropKind::ClrInterop).assert();
+        #
+        #    sheetCount      = workbook.get_NumberOfSheets();
+        #    for (i=1; i<=sheetCount; i++)
+        #    {
+        #        worksheet       = NPOIWorksheet::newFromSheet(this, workbook.GetSheetAt(i-1));
+        #
+        #        worksheets.insert( i, worksheet);
+        #    }
+        #}
+      ENDSOURCE
+      SOURCE #new
+        #/// <summary>
+        #/// Creates new instance of NPOIWorkbook object, opening specified Excel file
+        #/// </summary>
+        #protected void new()
+        #{
+        #}
+      ENDSOURCE
+      SOURCE #open
+        #void open(FileName _fileName)
+        #{
+        #;
+        #    try
+        #    {
+        #        workbook    = NPOI.SS.UserModel.WorkbookFactory::Create( _filename);
+        #    }
+        #    catch(Exception::CLRError)
+        #    {
+        #        throw error(AifUtil::getClrErrorMessage());
+        #    }
+        #}
+      ENDSOURCE
+      SOURCE #openBinDataContainer
+        #void openBinDataContainer( container _container)
+        #{
+        #;
+        #    stream  = SysFile::getStreamFromBinDataContainer(_container);
+        #
+        #    this.openStream(stream);
+        #}
+      ENDSOURCE
+      SOURCE #openStream
+        #void openStream(
+        #    System.IO.Stream   _stream
+        #  , boolean            _readOnly = true
+        #)
+        #{
+        #;
+        #    new InteropPermission(InteropKind::ClrInterop).assert();
+        #
+        #    workbook    = NPOI.SS.UserModel.WorkbookFactory::Create( _stream, _readOnly);
+        #}
+      ENDSOURCE
+      SOURCE #workbook
+        #NPOI.SS.UserModel.IWorkbook workbook()
+        #{
+        #    return workbook;
+        #}
+      ENDSOURCE
+      SOURCE #worksheets
+        #/// <summary>
+        #/// Returns map which holds references to worksheets in this workbook. If map not exists yet, its being initialized
+        #/// Key is worksheetId, value is OXMLWorksheet_RU object
+        #/// </summary>
+        #/// <returns>
+        #/// Map which holds references to worksheets in this workbook
+        #/// </returns>
+        #public Map worksheets()
+        #{
+        #    if (!worksheets)
+        #    {
+        #        this.initWorksheets();
+        #    }
+        #    return worksheets;
+        #}
+      ENDSOURCE
+      SOURCE #construct
+        #/// <summary>
+        #/// Initialized a new instance of a <c>NPOIWorkbook</c> class
+        #/// </summary>
+        #/// <param name="_filename">
+        #/// Path to the file which will be opened
+        #/// </param>
+        #/// <returns>
+        #/// New instance of a <c>NPOIWorkbook</c> class
+        #/// </returns>
+        #public static NPOIWorkbook construct(Filename _filename)
+        #{
+        #    NPOIWorkbook  ret = new NPOIWorkbook();
+        #;
+        #    ret.open(_filename);
+        #
+        #    return ret;
+        #}
+      ENDSOURCE
+      SOURCE #constructBinDataContainer
+        #public static NPOIWorkbook constructBinDataContainer( container _container)
+        #{
+        #    NPOIWorkbook  ret = new NPOIWorkbook();
+        #;
+        #    ret.openBinDataContainer( _container);
+        #
+        #    return ret;
+        #}
+      ENDSOURCE
+      SOURCE #constructStream
+        #public static NPOIWorkbook constructStream(
+        #    System.IO.Stream  _stream
+        #  , boolean           _readWrite = false
+        #)
+        #{
+        #    NPOIWorkbook  ret = new NPOIWorkbook();
+        #;
+        #    ret.openStream( _stream, _readWrite);
+        #
+        #    return ret;
+        #}
+      ENDSOURCE
+    ENDMETHODS
+  ENDCLASS
+
+***Element: CLS
+
+; Microsoft Dynamics AX Class: NPOIWorksheet выгружен
+; --------------------------------------------------------------------------------
+  CLSVERSION 1
+  
+  CLASS #NPOIWorksheet
+    PROPERTIES
+      Name                #NPOIWorksheet
+      Extends             #
+      RunOn               #Server
+    ENDPROPERTIES
+    
+    METHODS
+      Version: 3
+      SOURCE #classDeclaration
+        #/// <summary>
+        #/// Class is a wrapper around Open XML SDK worksheet object
+        #/// </summary>
+        #class NPOIWorksheet
+        #{
+        #    NPOIWorkbook                                    workbook;
+        #    NPOI.SS.UserModel.ISheet                        worksheet;
+        #
+        #    int                                             id;
+        #    str                                             name;
+        #
+        #    // Номер первой строки, содержащей данные
+        #    int                                             firstRowNo;
+        #    // Номер последней строки, содержащей данные
+        #    int                                             lastRowNo;
+        #    // Число заполненных строк
+        #    int                                             physicalRowCount;
+        #
+        #    #define.maxColumn(200) //maximum number of cells to be initialized
+        #    #define.maxColExcel(16384) //maximum number of cells in worksheet
+        #}
+      ENDSOURCE
+      SOURCE #firstRowNo
+        #int FirstRowNo()
+        #{
+        #    return firstRowNo;
+        #}
+      ENDSOURCE
+      SOURCE #getRow
+        #NPOIRow GetRow( int _rowNo)
+        #{
+        #    return NPOIRow::newFromRow( this, worksheet.GetRow(_rowNo - 1));
+        #}
+      ENDSOURCE
+      SOURCE #GetRowEnumerator
+        #NPOIRowEnumerator GetRowEnumerator()
+        #{
+        #    return new NPOIRowEnumerator( this, worksheet.GetRowEnumerator());
+        #}
+      ENDSOURCE
+      SOURCE #id
+        #/// <summary>
+        #/// Returns id of this worksheet
+        #/// </summary>
+        #/// <returns>
+        #/// Id of this worksheet
+        #/// </returns>
+        #public int Id()
+        #{
+        #    return id;
+        #}
+      ENDSOURCE
+      SOURCE #initFirstRowNo
+        #protected void initFirstRowNo()
+        #{
+        #;
+        #    firstRowNo  = worksheet.get_FirstRowNum();
+        #    firstRowNo++;
+        #}
+      ENDSOURCE
+      SOURCE #initLastRowNo
+        #protected void initLastRowNo()
+        #{
+        #;
+        #    lastRowNo  = worksheet.get_LastRowNum();
+        #    lastRowNo++;
+        #}
+      ENDSOURCE
+      SOURCE #initName
+        #protected void initName()
+        #{
+        #;
+        #    name    = worksheet.get_SheetName();
+        #}
+      ENDSOURCE
+      SOURCE #initPhysicalRowCount
+        #protected void initPhysicalRowCount()
+        #{
+        #;
+        #    physicalRowCount    = worksheet.get_PhysicalNumberOfRows();
+        #}
+      ENDSOURCE
+      SOURCE #lastRowNo
+        #int LastRowNo()
+        #{
+        #    return lastRowNo;
+        #}
+      ENDSOURCE
+      SOURCE #name
+        #/// <summary>
+        #/// Gets name for worksheet
+        #/// </summary>
+        #/// <returns>
+        #/// Name of worksheet
+        #/// </returns>
+        #public str Name()
+        #{
+        #;
+        #    return name;
+        #}
+      ENDSOURCE
+      SOURCE #new
+        #protected void new(
+        #    NPOIWorkbook                _workbook
+        #  , NPOI.SS.UserModel.ISheet    _sheet
+        #)
+        #{
+        #;
+        #    workbook    = _workbook;
+        #    worksheet   = _sheet;
+        #
+        #    this.initFirstRowNo();
+        #    this.initLastRowNo();
+        #    this.initPhysicalRowCount();
+        #    this.initName();
+        #}
+      ENDSOURCE
+      SOURCE #physicalRowCount
+        #int PhysicalRowCount()
+        #{
+        #    return physicalRowCount;
+        #}
+      ENDSOURCE
+      SOURCE #workbook
+        #NPOIWorkbook workbook()
+        #{
+        #    return workbook;
+        #}
+      ENDSOURCE
+      SOURCE #worksheet
+        #NPOI.SS.UserModel.ISheet worksheet()
+        #{
+        #    return worksheet;
+        #}
+      ENDSOURCE
+      SOURCE #newFromSheet
+        #/// <summary>
+        #/// Creates new instance of NPOIWorksheet class
+        #/// </summary>
+        #/// <param name="_workbook">
+        #/// Reference to workbook this worksheet belongs to
+        #/// </param>
+        #/// <param name="_sheet">
+        #/// NPOI sheet object, which holds data about worksheet name and id
+        #/// </param>
+        #/// <returns>
+        #/// new NPOIWorksheet object
+        #/// </returns>
+        #public static NPOIWorksheet newFromSheet(
+        #    NPOIWorkbook                _workbook
+        #  , NPOI.SS.UserModel.ISheet    _sheet
+        #)
+        #{
+        #    return new NPOIWorksheet(_workbook, _sheet);
+        #}
+      ENDSOURCE
+    ENDMETHODS
+  ENDCLASS
+
+***Element: CLS
+
+; Microsoft Dynamics AX Class: NPOIRowEnumerator выгружен
+; --------------------------------------------------------------------------------
+  CLSVERSION 1
+  
+  CLASS #NPOIRowEnumerator
+    PROPERTIES
+      Name                #NPOIRowEnumerator
+      Extends             #
+      RunOn               #Server
+    ENDPROPERTIES
+    
+    METHODS
+      Version: 3
+      SOURCE #classDeclaration
+        #class NPOIRowEnumerator
+        #{
+        #    NPOIWorksheet                   worksheet;
+        #
+        #    System.Collections.IEnumerator  enumerator;
+        #}
+      ENDSOURCE
+      SOURCE #current
+        #public NPOIRow Current()
+        #{
+        #    return NPOIRow::newFromRow( worksheet, enumerator.get_Current());
+        #}
+        #
+      ENDSOURCE
+      SOURCE #MoveNext
+        #boolean MoveNext()
+        #{
+        #    return ClrInterop::getAnyTypeForObject(enumerator.MoveNext());
+        #}
+      ENDSOURCE
+      SOURCE #new
+        #void new(
+        #    NPOIWorksheet                   _worksheet
+        #  , System.Collections.IEnumerator  _enumerator
+        #)
+        #{
+        #;
+        #    worksheet   = _worksheet;
+        #
+        #    enumerator  = _enumerator;
+        #}
+      ENDSOURCE
+      SOURCE #Reset
+        #void Reset()
+        #{
+        #;
+        #    enumerator.Reset();
+        #}
+      ENDSOURCE
+    ENDMETHODS
+  ENDCLASS
+
+***Element: CLS
+
+; Microsoft Dynamics AX Class: NPOIRow выгружен
+; --------------------------------------------------------------------------------
+  CLSVERSION 1
+  
+  CLASS #NPOIRow
+    PROPERTIES
+      Name                #NPOIRow
+      Extends             #
+      RunOn               #Server
+    ENDPROPERTIES
+    
+    METHODS
+      Version: 3
+      SOURCE #classDeclaration
+        #class NPOIRow
+        #{
+        #    NPOIWorksheet               worksheet;
+        #    NPOI.SS.UserModel.IRow      row;
+        #}
+      ENDSOURCE
+      SOURCE #GetCell
+        #NPOICell GetCell( int _columnNo)
+        #{
+        #    return NPOICell::newFromCell( this, row.GetCell(_columnNo - 1));
+        #}
+      ENDSOURCE
+      SOURCE #GetCellEnumerator
+        #NPOICellEnumerator GetCellEnumerator()
+        #{
+        #    System.Collections.IEnumerable  list;
+        #;
+        #    list    = row;
+        #
+        #    return new NPOICellEnumerator( this, list.GetEnumerator());
+        #}
+      ENDSOURCE
+      SOURCE #getValueCon
+        #container getValueCon()
+        #{
+        #    NPOICellEnumerator  me;
+        #    int                 columnNo;
+        #    NPOICell            cell;
+        #    container           ret;
+        #    int                 lastColumnNo;
+        #    int                 i;
+        #;
+        #    setPrefix(strfmt("Строка %1", this.RowNo()));
+        #
+        #    me      = this.GetCellEnumerator();
+        #    while (me.moveNext())
+        #    {
+        #        cell        = me.Current();
+        #        columnNo    = cell.ColumnNo();
+        #
+        #        setPrefix(strfmt("Столбец %1", columnNo));
+        #
+        #        if ( (columnNo - lastColumnNo) > 1)
+        #        {
+        #            for (i=1; i<(columnNo - lastColumnNo); i++)
+        #            {
+        #                ret += "";
+        #            }
+        #        }
+        #
+        #        ret         += cell.AnytypeCellValue();
+        #
+        #        lastColumnNo    = columnNo;
+        #    }
+        #
+        #    return ret;
+        #}
+      ENDSOURCE
+      SOURCE #new
+        #protected void new(
+        #    NPOIWorksheet               _worksheet
+        #  , NPOI.SS.UserModel.IRow      _row
+        #)
+        #{
+        #;
+        #    worksheet   = _worksheet;
+        #    row         = _row;
+        #}
+      ENDSOURCE
+      SOURCE #row
+        #NPOI.SS.UserModel.IRow row()
+        #{
+        #    return row;
+        #}
+      ENDSOURCE
+      SOURCE #rowNo
+        #int RowNo()
+        #{
+        #    return ClrInterop::getAnyTypeForObject(row.get_RowNum()) + 1;
+        #}
+      ENDSOURCE
+      SOURCE #newFromRow
+        #/// <summary>
+        #/// Creates new instance of NPOIRow class
+        #/// </summary>
+        #/// <param name="_worksheet">
+        #/// Reference to worksheet this row belongs to
+        #/// </param>
+        #/// <param name="_row">
+        #/// NPOI row object
+        #/// </param>
+        #/// <returns>
+        #/// new NPOIRow object
+        #/// </returns>
+        #public static NPOIRow newFromRow(
+        #    NPOIWorksheet               _worksheet
+        #  , NPOI.SS.UserModel.IRow      _row
+        #)
+        #{
+        #    return new NPOIRow(_worksheet, _row);
+        #}
+      ENDSOURCE
+    ENDMETHODS
+  ENDCLASS
+
+***Element: CLS
+
+; Microsoft Dynamics AX Class: NPOICellEnumerator выгружен
+; --------------------------------------------------------------------------------
+  CLSVERSION 1
+  
+  CLASS #NPOICellEnumerator
+    PROPERTIES
+      Name                #NPOICellEnumerator
+      Extends             #
+      RunOn               #Server
+    ENDPROPERTIES
+    
+    METHODS
+      Version: 3
+      SOURCE #classDeclaration
+        #class NPOICellEnumerator
+        #{
+        #    NPOIRow                         row;
+        #
+        #    System.Collections.IEnumerator  enumerator;
+        #}
+      ENDSOURCE
+      SOURCE #current
+        #public NPOICell Current()
+        #{
+        #    return NPOICell::newFromCell( row, enumerator.get_Current());
+        #}
+        #
+      ENDSOURCE
+      SOURCE #MoveNext
+        #boolean MoveNext()
+        #{
+        #    return ClrInterop::getAnyTypeForObject(enumerator.MoveNext());
+        #}
+      ENDSOURCE
+      SOURCE #new
+        #void new(
+        #    NPOIRow                         _row
+        #  , System.Collections.IEnumerator  _enumerator
+        #)
+        #{
+        #;
+        #    row         = _row;
+        #
+        #    enumerator  = _enumerator;
+        #}
+      ENDSOURCE
+      SOURCE #Reset
+        #void Reset()
+        #{
+        #;
+        #    enumerator.Reset();
+        #}
+      ENDSOURCE
+    ENDMETHODS
+  ENDCLASS
+
+***Element: CLS
+
+; Microsoft Dynamics AX Class: NPOICell выгружен
+; --------------------------------------------------------------------------------
+  CLSVERSION 1
+  
+  CLASS #NPOICell
+    PROPERTIES
+      Name                #NPOICell
+      Extends             #
+      RunOn               #Server
+    ENDPROPERTIES
+    
+    METHODS
+      Version: 3
+      SOURCE #AnytypeCellValue
+        #anytype AnytypeCellValue()
+        #{
+        #    NPOI.SS.UserModel.CellType  cellType;
+        #;
+        #    cellType    = cell.get_CellType();
+        #
+        #    return this.getAnytypeCellValueByCellType( cellType);
+        #}
+      ENDSOURCE
+      SOURCE #AnytypeDateTimeCellValue
+        #anytype AnytypeDateTimeCellValue()
+        #{
+        #    NPOI.SS.UserModel.ICellStyle    style;
+        #    str                             formatCode;
+        #;
+        #    style       = cell.get_CellStyle();
+        #    formatCode  = style.GetDataFormatString();
+        #
+        #    if ( this.formatCodeIsUtcDateTime(formatCode))
+        #    {
+        #        return this.DateTimeCellValue();
+        #    }
+        #    else
+        #    if ( this.formatCodeIsTime(formatCode))
+        #    {
+        #        return this.TimeCellValue();
+        #    }
+        #
+        #    return this.DateCellValue();
+        #}
+      ENDSOURCE
+      SOURCE #cell
+        #NPOI.SS.UserModel.ICell cell()
+        #{
+        #    return cell;
+        #}
+      ENDSOURCE
+      SOURCE #classDeclaration
+        #class NPOICell
+        #{
+        #    NPOIRow                     row;
+        #    NPOI.SS.UserModel.ICell     cell;
+        #}
+      ENDSOURCE
+      SOURCE #ColumnNo
+        #int ColumnNo()
+        #{
+        #    return ClrInterop::getAnyTypeForObject(cell.get_ColumnIndex()) + 1;
+        #}
+      ENDSOURCE
+      SOURCE #DateCellValue
+        #date DateCellValue()
+        #{
+        #    return DateTimeUtil::date(this.DateTimeCellValue());
+        #}
+      ENDSOURCE
+      SOURCE #DateTimeCellValue
+        #utcdatetime DateTimeCellValue()
+        #{
+        #    System.DateTime     dateTime;
+        #;
+        #    dateTime    = System.DateTime::FromOADate( cell.get_NumericCellValue());
+        #
+        #    return ClrInterop::getAnyTypeForObject(dateTime);
+        #}
+      ENDSOURCE
+      SOURCE #ErrorCellValue
+        #str ErrorCellValue()
+        #{
+        #    NPOI.SS.Formula.Constant.ErrorConstant  constant;
+        #;
+        #    constant    = NPOI.SS.Formula.Constant.ErrorConstant::ValueOf(cell.get_ErrorCellValue());
+        #
+        #    return ClrInterop::getAnyTypeForObject(constant.get_Text());
+        #}
+      ENDSOURCE
+      SOURCE #formatCodeIsTime
+        #private boolean formatCodeIsTime(
+        #    str _formatCode
+        #)
+        #{
+        #    return _formatCode == @"[$-F400]h:mm:ss\ AM/PM"
+        #        || _formatCode == @"h:mm;@"
+        #        || _formatCode == @"[$-409]h:mm\ AM/PM;@"
+        #        || _formatCode == @"h:mm:ss;@"
+        #        || _formatCode == @"[$-409]h:mm:ss\ AM/PM;@"
+        #        || _formatCode == @"mm:ss.0;@"
+        #        || _formatCode == @"[h]:mm:ss;@"
+        #        ;
+        #}
+      ENDSOURCE
+      SOURCE #formatCodeIsUtcDateTime
+        #private boolean formatCodeIsUtcDateTime(
+        #    str _formatCode
+        #)
+        #{
+        #    return _formatCode == @"[$-409]dd/mm/yy\ h:mm\ AM/PM;@"
+        #        || _formatCode == @"dd/mm/yy\ h:mm;@"
+        #        ;
+        #}
+      ENDSOURCE
+      SOURCE #getAnytypeCellValueByCellType
+        #private anytype getAnytypeCellValueByCellType(
+        #    NPOI.SS.UserModel.CellType  cellType
+        #  , boolean                     allowFormulaType = true
+        #)
+        #{
+        #    anytype                     ret;
+        #;
+        #    if ( cellType == NPOI.SS.UserModel.CellType::Numeric)
+        #    {
+        #        if ( ClrInterop::getAnyTypeForObject(NPOI.SS.UserModel.DateUtil::IsCellDateFormatted(cell)))
+        #        {
+        #            ret = this.AnytypeDateTimeCellValue();
+        #        }
+        #        else
+        #        {
+        #            ret = this.NumericCellValue();
+        #        }
+        #    }
+        #    else
+        #    if ( cellType == NPOI.SS.UserModel.CellType::String)
+        #    {
+        #        ret = this.StringCellValue();
+        #    }
+        #    else
+        #    if ( cellType == NPOI.SS.UserModel.CellType::Error)
+        #    {
+        #        ret = this.ErrorCellValue();
+        #    }
+        #    else
+        #    if ( allowFormulaType
+        #      && cellType == NPOI.SS.UserModel.CellType::Formula)
+        #    {
+        #        cellType    = cell.get_CachedFormulaResultType();
+        #        ret         = this.getAnytypeCellValueByCellType( cellType, false);
+        #    }
+        #    else
+        #        throw Error(strfmt("%1", ClrInterop::getAnyTypeForObject(cellType.ToString())));
+        #
+        #    return ret;
+        #}
+      ENDSOURCE
+      SOURCE #new
+        #protected void new(
+        #    NPOIRow                 _row
+        #  , NPOI.SS.UserModel.ICell _cell
+        #)
+        #{
+        #;
+        #    row     = _row;
+        #    cell    = _cell;
+        #}
+      ENDSOURCE
+      SOURCE #NumericCellValue
+        #real NumericCellValue()
+        #{
+        #    return ClrInterop::getAnyTypeForObject(cell.get_NumericCellValue());
+        #}
+      ENDSOURCE
+      SOURCE #StringCellValue
+        #str StringCellValue()
+        #{
+        #    return ClrInterop::getAnyTypeForObject(cell.get_StringCellValue());
+        #}
+      ENDSOURCE
+      SOURCE #TimeCellValue
+        #timeOfDay TimeCellValue()
+        #{
+        #    System.DateTime     dateTime;
+        #    System.TimeSpan     timeSpan;
+        #;
+        #    dateTime    = System.DateTime::FromOADate( cell.get_NumericCellValue());
+        #
+        #    timeSpan    = dateTime.get_TimeOfDay();
+        #
+        #    return ClrInterop::getAnyTypeForObject( timeSpan.get_TotalSeconds());
+        #}
+      ENDSOURCE
+      SOURCE #newFromCell
+        #/// <summary>
+        #/// Creates new instance of NPOICell class
+        #/// </summary>
+        #/// <param name="_row">
+        #/// Reference to row this cell belongs to
+        #/// </param>
+        #/// <param name="_cell">
+        #/// NPOI cell object
+        #/// </param>
+        #/// <returns>
+        #/// new NPOICell object
+        #/// </returns>
+        #public static NPOICell newFromCell(
+        #    NPOIRow                 _row
+        #  , NPOI.SS.UserModel.ICell _cell
+        #)
+        #{
+        #    return new NPOICell( _row, _cell);
+        #}
+      ENDSOURCE
+    ENDMETHODS
+  ENDCLASS
+
+***Element: PRN
+
+; Microsoft Dynamics AX Project : NPOI unloaded
+; --------------------------------------------------------------------------------
+  PROJECTVERSION 2
+  
+  PROJECT #NPOI
+   SHARED
+  PROPERTIES
+    Name                #NPOI
+  ENDPROPERTIES
+  
+    PROJECTCLASS ProjectNode
+    BEGINNODE
+      FILETYPE 0
+      UTILTYPE 45
+      UTILOBJECTID 42003
+      NODETYPE 329
+      NAME #NPOIWorkbook
+    ENDNODE
+    BEGINNODE
+      FILETYPE 0
+      UTILTYPE 45
+      UTILOBJECTID 42004
+      NODETYPE 329
+      NAME #NPOIWorksheet
+    ENDNODE
+    BEGINNODE
+      FILETYPE 0
+      UTILTYPE 45
+      UTILOBJECTID 42006
+      NODETYPE 329
+      NAME #NPOIRowEnumerator
+    ENDNODE
+    BEGINNODE
+      FILETYPE 0
+      UTILTYPE 45
+      UTILOBJECTID 42005
+      NODETYPE 329
+      NAME #NPOIRow
+    ENDNODE
+    BEGINNODE
+      FILETYPE 0
+      UTILTYPE 45
+      UTILOBJECTID 42008
+      NODETYPE 329
+      NAME #NPOICellEnumerator
+    ENDNODE
+    BEGINNODE
+      FILETYPE 0
+      UTILTYPE 45
+      UTILOBJECTID 42007
+      NODETYPE 329
+      NAME #NPOICell
+    ENDNODE
+  ENDPROJECT
+  
+
+***Element: END
